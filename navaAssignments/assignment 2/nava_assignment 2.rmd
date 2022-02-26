@@ -34,6 +34,12 @@ algaeTest <- c(0,1,1,0,0,0)
 ```
 
 ### a) and b)
+
+The following is my work:
+
+![Point A](point a.jpg)
+
+
 ```{r}
 beta_point_est <- function(prior_alpha,
                            prior_beta,
@@ -107,6 +113,8 @@ beta_low(prior_alpha = 2,
 The major assumption is the one that leads us to conjugacy. We, as Bayes did, have a closed-form solution for the denominator. But we impose ad-hoc shapes for the distribution of the priors and a known maximum likelihood. How are we sure this is the case in the real world?
 
 ### e)
+
+I test how the density shifts as we test several values for beta and aplha.
 
 ```{r}
 library(tidyverse)
