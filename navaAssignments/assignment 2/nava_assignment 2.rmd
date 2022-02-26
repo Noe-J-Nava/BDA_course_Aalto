@@ -1,0 +1,141 @@
+---
+title: "BDA - Assignment 2"
+author: "Anonymous"
+output: 
+  pdf_document: 
+    toc: yes
+    toc_depth: 1
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+# This chunk sets echo = TRUE as default, that is print all code.
+# knitr::opts_chunk$set can be used to set other notebook generation options, too.
+# include=FALSE inside curly brackets makes this block not be included in the pdf.
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# To install aaltobda, see the General information in the assignment.
+remotes::install_github("avehtari/BDA_course_Aalto", subdir = "rpackage", upgrade = "never")
+```
+
+# Inference for binomial proportion 
+
+```{r}
+# Installing libraries and setting up dataset
+library(aaltobda)
+data("algae")
+```
+
+```{r}
+# to check if the code is running correctly (i.e., has been programmed correctly)
+algaeTest <- c(0,1,1,0,0,0)
+```
+
+### a) and b)
+```{r}
+beta_point_est <- function(prior_alpha,
+                           prior_beta,
+                           data) {
+  n <- length(data)
+  y <- sum(data)
+  E_pay <- (prior_alpha + y)/(prior_alpha + prior_beta + n)
+  return(E_pay)
+}
+
+beta_interval <- function(prior_alpha,
+                          prior_beta,
+                          data,
+                          prob) {
+  n <- length(data)
+  y <- sum(data)
+  
+  E_pay <- beta_point_est(prior_alpha = 2,
+                          prior_beta  = 10,
+                          data = data)
+
+  Var_pay <- (E_pay*(1-E_pay)) / (prior_alpha + prior_beta + n + 1)
+  tstat   <- qt(p = prob, df = (n-1), lower.tail = TRUE)
+  
+  lower <- E_pay - sqrt(Var_pay/n)*tstat 
+  upper <- E_pay + sqrt(Var_pay/n)*tstat
+  
+  return(list(lower, upper))
+  #Var_pay
+}
+cat("The following is the expected value of pi")
+cat("\n")
+beta_point_est(prior_alpha = 2,
+               prior_beta  = 10,
+               data = algae)
+cat("The following is the confidence interval of pi")
+cat("\n")
+beta_interval(prior_alpha = 2,
+              prior_beta  = 10,
+              data = algae,
+              prob = .9)
+cat("\n")
+cat("My answers are different when I did the algaeTest, but they made sense to me. I think I am still thinking in a frequentist manner. Please, explain to me the confidence interval in bayesian.")
+cat("\n")
+cat("Below, however, I estimate the bayesian credible intervals just for completeness")
+qbeta(c(0.05,.9), 2 + sum(algae), 10 + length(algae) - sum(algae))
+
+```
+
+### c)
+
+```{r}
+beta_low <- function(prior_alpha,
+                     prior_beta,
+                     data,
+                     pi_0) {
+  density <- integrate(function(pay) dbeta(pay, prior_alpha, prior_beta), 0,pi_0)[1]
+  return(density)
+}
+cat("\n")
+cat("The following the is probability of (total mass left of) the historical value of pi = 0.2")
+cat("\n")
+beta_low(prior_alpha = 2,
+         prior_beta  = 10,
+         data = algae,
+         pi_0 = 0.2)
+```
+
+### d) 
+
+The major assumption is the one that leads us to conjugacy. We, as Bayes did, have a closed-form solution for the denominator. But we impose ad-hoc shapes for the distribution of the priors and a known maximum likelihood. How are we sure this is the case in the real world?
+
+### e)
+
+```{r}
+library(tidyverse)
+y <- sum(algae)
+n <- length(algae)
+
+betaValues <- function(alpha, beta) {
+  left  <- alpha + y
+  right <- beta + n - y
+  p <- qbeta(seq(from = 0.05, to = .95, by = 0.05), left, right)
+}
+
+beta_tibble <- tibble(alpha = rep(c(1, 1.5, 2, 2.5, 3), each = length(seq(from = 0.05, to = .95, by = 0.05))))
+beta_tibble <- beta_tibble %>%
+  mutate(betaValues = betaValues(alpha, 10))
+beta_tibble$alpha <- as.character(beta_tibble$alpha)
+
+ggplot(beta_tibble, aes(x = betaValues, fill = alpha)) + geom_density(alpha = 0.5)
+
+alpha_tibble <- tibble(beta = rep(c(8, 8.5, 9, 9.5, 10), each = length(seq(from = 0.05, to = .95, by = 0.05))))
+alpha_tibble <- alpha_tibble %>%
+  mutate(betaValues = betaValues(beta, 10))
+alpha_tibble$beta <- as.character(alpha_tibble$beta)
+
+ggplot(alpha_tibble, aes(x = betaValues, fill = beta)) + geom_density(alpha = 0.5)
+
+```
+
+
+
+
+
