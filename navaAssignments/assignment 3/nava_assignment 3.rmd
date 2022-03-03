@@ -1,0 +1,163 @@
+---
+title: "BDA - Assignment 3"
+author: "Anonymous"
+output: 
+  pdf_document: 
+    toc: yes
+    toc_depth: 1
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+# This chunk sets echo = TRUE as default, that is print all code.
+# knitr::opts_chunk$set can be used to set other notebook generation options, too.
+# include=FALSE inside curly brackets makes this block not be included in the pdf.
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# To install aaltobda, see the General information in the assignment.
+remotes::install_github("avehtari/BDA_course_Aalto", subdir = "rpackage", upgrade = "never")
+```
+
+# Inference for normal mean and deviation 
+
+```{r}
+# Installing libraries and setting up dataset
+library(aaltobda)
+data("windshieldy1")
+head(windshieldy1)  # Testing hardness
+windshieldy_test <- c(13.357, 14.928, 14.896, 14.820)
+```
+
+# A)
+
+```{r}
+data <- windshieldy1
+
+mu_point_est <- function(data) {
+  y <- data
+  n <- length(y)
+  sims <- 10000
+  
+  ybar  <- (1/n)*sum(y)
+  s_sq  <- (1/(n-1))*sum((y - ybar)^2)
+  
+  mu_s <- rtnew(sims, df = n - 1, mean = ybar, scale = s_sq/n)
+  mu <- mean(mu_s)
+  mu <- round(mu, digits = 1)
+  return(mu)
+}
+
+mu_interval <- function(data, prob) {
+  y <- data
+  n <- length(y)
+  sims <- 10000
+  
+  ybar  <- (1/n)*sum(y)
+  s_sq  <- (1/(n-1))*sum((y - ybar)^2)
+  
+  lower <- (1-prob)/2
+  upper <- prob + (1-prob)/2
+
+  interval <- qtnew(c(lower, upper), df = n - 1, mean = ybar, scale = s_sq/n)
+  round(interval, digits = 1)
+  return(interval)
+}
+if(TRUE) {
+  cat("\n")
+  cat("Below is the point estimate E(mu|y)")
+  cat("\n")
+  print(mu_point_est(data = data))
+} 
+if(TRUE) {
+  cat("\n")
+  cat("Below is the interval at 95%")
+  cat("\n")
+  print(mu_interval(data = data, prob = .95))
+}
+
+```
+
+# B)
+
+```{r}
+data <- windshieldy1
+
+mu_pred_point_est <- function(data) {
+  
+  y <- data
+  n <- length(y)
+  sims <- 10000
+  
+  ybar  <- (1/n)*sum(y)
+  s_sq  <- (1/(n-1))*sum((y - ybar)^2)
+  
+  density <- integrate(function(theta) theta*dtnew(theta, 
+                                      df = n - 1, 
+                                      mean = ybar, 
+                                      scale = s_sq/n), 
+            lower = -Inf, 
+            upper = Inf)[1]
+  return(density)
+}
+mu_pred_interval <- function(data, prob) {
+  
+  y <- data
+  n <- length(y)
+  
+  ybar  <- (1/n)*sum(y)
+  s_sq  <- (1/(n-1))*sum((y - ybar)^2)
+  
+  scale <- sqrt((1+(1/n)))*sqrt(s_sq)
+  
+  lower <- (1-prob)/2
+  upper <- prob + (1-prob)/2
+ 
+  interval <- qtnew(c(lower, upper), df = n - 1, mean = ybar, scale = scale)
+  round(interval, digits = 1)
+  return(interval)
+}
+
+if(TRUE) {
+  cat("\n")
+  cat("Below is the expected hardness of the next windshield,")
+  cat("\n")
+  cat("E_p(theta|y)[theta] optained by integrating")
+  cat("theta*p(theta|y) over theta.")
+  cat("\n")
+  print(mu_pred_point_est(data = data))
+  cat("\n")
+}  
+
+if(TRUE) {
+  cat("\n")
+  cat("Below is the predictive interval:")
+  print(mu_pred_interval(data = data, prob = 0.95))
+  cat("\n")
+}  
+
+cat("I also plot the distribution")
+
+y <- data
+n <- length(y)
+  
+ybar  <- (1/n)*sum(y)
+s_sq  <- (1/(n-1))*sum((y - ybar)^2)
+  
+scale <- sqrt((1+(1/n)))*sqrt(s_sq)
+  
+prob <- 0.95
+lower <- (1-prob)/2
+upper <- prob + (1-prob)/2
+
+plot(density(rtnew(100, df = n - 1, mean = ybar, scale = scale)))
+```
+
+
+
+
+
+
+
+
