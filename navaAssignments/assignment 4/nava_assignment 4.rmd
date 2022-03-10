@@ -1,0 +1,157 @@
+---
+title: "BDA - Assignment 4"
+author: "Anonymous"
+output: 
+  pdf_document: 
+    toc: yes
+    toc_depth: 1
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+# This chunk sets echo = TRUE as default, that is print all code.
+# knitr::opts_chunk$set can be used to set other notebook generation options, too.
+# include=FALSE inside curly brackets makes this block not be included in the pdf.
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# To install aaltobda, see the General information in the assignment.
+remotes::install_github("avehtari/BDA_course_Aalto", subdir = "rpackage", upgrade = "never")
+library(aaltobda)
+```
+
+# 1. Bioassay model 
+
+### A)
+
+I construct a vector of means with the dimensions $2 \times 1$, and a variance-covariance matrix with the dimensions $2 \times 2$.
+
+```{r}
+mean  <- c(0, 10)
+mean  <- matrix(mean, nrow = 2)
+sigma <- c(2^2, .6, .6, 10^10)
+sigma <- matrix(sigma, nrow = 2, ncol = 2)
+
+print(mean)
+print(sigma)
+```
+
+### B)
+
+```{r}
+data("bioassay_posterior")
+# Function to calculate expected value with MCSE
+# Also adjusts for leading zeros after the decimal
+mcse.estimate <- function(vector) {
+  S <- length(vector)
+  
+  estimate <- (1/S)*sum(vector)
+  variance <- var(vector)
+  mcse <- sqrt(variance/S)
+  
+  nu.leadingZeros <- attr(regexpr("(?<=\\.)0+", mcse, perl = TRUE), "match.length")
+  estimate <- round(estimate, nu.leadingZeros)
+  
+  list <- list("Estimate" =  estimate, 
+               "MCSE"     = mcse)
+  
+  return(list)
+  
+}
+# Function to calculate quantile value with MCSE
+# Also adjusts for leading zeros after the decimal
+mcse.estimateQuantile <- function(vector, prob) {
+  
+  q    <- quantile(vector, prob = prob)
+  mcse <- mcse_quantile(vector, prob = prob)
+  
+  nu.leadingZeros <- attr(regexpr("(?<=\\.)0+", mcse, perl = TRUE), "match.length")
+  q <- round(q, nu.leadingZeros)
+  
+  list <- list("Quantile" = q,
+               "MCSE"     = mcse)
+  
+  return(list)
+  
+}
+```
+
+Below I describe the values for $\alpha$:
+
+```{r}
+# Values for alpha
+alpha <- bioassay_posterior$alpha
+mcseEstimate <- mcse.estimate(alpha)
+mcse.estimateQuantile05 <- mcse.estimateQuantile(alpha, prob = 0.05)
+mcse.estimateQuantile95 <- mcse.estimateQuantile(alpha, prob = 0.95)
+
+print(mcseEstimate)
+print(mcse.estimateQuantile05)
+print(mcse.estimateQuantile95)
+```
+
+Below I describe the values for $\beta$:
+
+```{r}
+# Values for alpha
+beta <- bioassay_posterior$beta
+mcseEstimate <- mcse.estimate(beta)
+mcse.estimateQuantile05 <- mcse.estimateQuantile(beta, prob = 0.05)
+mcse.estimateQuantile95 <- mcse.estimateQuantile(beta, prob = 0.95)
+
+print(mcseEstimate)
+print(mcse.estimateQuantile05)
+print(mcse.estimateQuantile95)
+```
+
+## Importance sampling:
+### C)
+
+```{r}
+# Log-likelihood of multivariate
+bioassayfun <- function(w, df) {
+  z <- w[1] + w[2]*df$x
+  -sum(df$y*(z) - df$n*log1p(exp(z)))
+}
+
+# Dataset
+df1 <- data.frame(
+  x = c(-0.86, -0.30, -0.05, 0.73),
+  n = c(5, 5, 5, 5),
+  y = c(0, 1, 3, 5)
+)
+
+w0 <- c(0,0) # Initial values
+optim_res <- optim(w0, bioassayfun, gr = NULL, df1, hessian = T)
+w <- optim_res$par
+S <- solve(optim_res$hessian)
+
+ldmvnorm <- function(x, mu, sig) {
+(-0.5*(length(x)*log(2*pi) + log(det(sig)) + (x-mu)%*%solve(sig, x-mu)))
+}
+
+samp_norm <- rmvnorm(6, mean, sigma)
+
+logl <- function(df, a, b) {
+  df['y']*(a + b*df['x']) - df['n']*log1p(exp(a + b*df['x']))
+}
+lg <- apply(samp_norm, 1, ldmvnorm, w, S)
+lp <- apply(df1, 1, logl, samp_norm[,1], samp_norm[,2]) %>% rowSums()
+lw <- lp-lg
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
