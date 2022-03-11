@@ -126,8 +126,8 @@ log_importance_weights <- function(alpha, beta) {
   
 }
 
-#pointc <- log_importance_weights(alpha, beta)
-#round(pointc,2)
+pointc <- log_importance_weights(alpha, beta)
+round(pointc,2)
 ```
 
 
@@ -147,8 +147,8 @@ normalized_importance_weights <- function(alpha, beta) {
   
 }
 
-#pointd <- normalized_importance_weights(alpha = alpha, beta = beta)
-#round(pointd, 3)
+pointd <- normalized_importance_weights(alpha = alpha, beta = beta)
+round(pointd, 3)
 ```
 
 ### E)
@@ -177,7 +177,7 @@ S_eff <- function(alpha, beta) {
   return(Seff)
 }
 
-Seff <- S_eff(alpha, beta)
+Seff <- S_eff(theta[,1], theta[,2])
 print(Seff)
 ```
 
@@ -187,19 +187,23 @@ To analyze the possibility of missing some extremely large importance weights, w
 
 ### H)
 
+Denote $E(.)$ the function to get the expected value of a function in terms of importance weights. The function of interest is $h(\theta^s) = \theta^s$. Thus, $E(\theta)$.  
+
 ```{r}
 posterior_mean <- function(alpha, beta) {
   
   theta <- list(alpha, beta)
   lst <- list()
   i <- 0
+  log.like <- bioassaylp(alpha, beta, bioassay$x, bioassay$y, bioassay$n)
+  like <- exp(log.like)
   for(t in theta) {
     i <- 1 + i
     
-    S <- length(t)
-    estimate <- (1/S)*sum(t)
-    variance <- var(t)
-    mcse <- sqrt(variance/Seff)
+    estimate <- mean(t*like)/mean(like)
+    
+    mcse <- (mean(t*like^2)/mean(like^2)) - estimate^2
+    
     nu.leadingZeros <- attr(regexpr("(?<=\\.)0+", mcse, perl = TRUE), "match.length")
     estimate <- round(estimate, nu.leadingZeros)
     
@@ -210,7 +214,7 @@ posterior_mean <- function(alpha, beta) {
   return(lst)
 }
 
-pstmean <- posterior_mean(alpha, beta)
+pstmean <- posterior_mean(theta[,1], theta[,2])
 print(pstmean)
 ```
 
