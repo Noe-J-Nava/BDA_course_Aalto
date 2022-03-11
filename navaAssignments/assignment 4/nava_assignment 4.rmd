@@ -30,7 +30,7 @@ I construct a vector of means with the dimensions $2 \times 1$, and a variance-c
 ```{r}
 mean  <- c(0, 10)
 mean  <- matrix(mean, nrow = 2)
-sigma <- c(2^2, .6, .6, 10^10)
+sigma <- c(2, .6, .6, 10)
 sigma <- matrix(sigma, nrow = 2, ncol = 2)
 
 print(mean)
@@ -108,48 +108,111 @@ print(mcse.estimateQuantile95)
 ## Importance sampling:
 ### C)
 
+Notice here that $w(\theta^s) = \frac{q(\theta^s | y)}{g(\theta)} = q(y|\theta^s)$ when we assumed that the prior distribution $p(\theta)$ equals our proposal distribution $g(\theta)$. Thus, our function is given below. Also, we work with logs because it makes things computaitonally easier!
+
 ```{r}
-# Log-likelihood of multivariate
-bioassayfun <- function(w, df) {
-  z <- w[1] + w[2]*df$x
-  -sum(df$y*(z) - df$n*log1p(exp(z)))
+library(aaltobda)
+data("bioassay")
+bioassay
+
+alpha <- c(1.896, -3.6, 0.374, 0.964, -3.123, -1.581)
+beta  <- c(24.76, 20.04, 6.15, 18.65, 8.16, 17.4)
+
+log_importance_weights <- function(alpha, beta) {
+  
+  log.like <- bioassaylp(alpha, beta, bioassay$x, bioassay$y, bioassay$n)
+  
+  return(log.like)
+  
 }
 
-# Dataset
-df1 <- data.frame(
-  x = c(-0.86, -0.30, -0.05, 0.73),
-  n = c(5, 5, 5, 5),
-  y = c(0, 1, 3, 5)
-)
-
-w0 <- c(0,0) # Initial values
-optim_res <- optim(w0, bioassayfun, gr = NULL, df1, hessian = T)
-w <- optim_res$par
-S <- solve(optim_res$hessian)
-
-ldmvnorm <- function(x, mu, sig) {
-(-0.5*(length(x)*log(2*pi) + log(det(sig)) + (x-mu)%*%solve(sig, x-mu)))
-}
-
-samp_norm <- rmvnorm(6, mean, sigma)
-
-logl <- function(df, a, b) {
-  df['y']*(a + b*df['x']) - df['n']*log1p(exp(a + b*df['x']))
-}
-lg <- apply(samp_norm, 1, ldmvnorm, w, S)
-lp <- apply(df1, 1, logl, samp_norm[,1], samp_norm[,2]) %>% rowSums()
-lw <- lp-lg
-
-
+#pointc <- log_importance_weights(alpha, beta)
+#round(pointc,2)
 ```
 
 
+### D)
 
+The effect of exponentiation and scaling makes things easier for interpretation.
 
+```{r}
+normalized_importance_weights <- function(alpha, beta) {
+  
+  log.like <- bioassaylp(alpha, beta, bioassay$x, bioassay$y, bioassay$n)
+  like <- exp(log.like)
+  
+  denominator <- sum(like)
+  
+  return(like/denominator)
+  
+}
 
+#pointd <- normalized_importance_weights(alpha = alpha, beta = beta)
+#round(pointd, 3)
+```
 
+### E)
 
+```{r}
+sims <- 4000
+theta <- rmvnorm(sims, mean = mean, sigma = sigma)
 
+alphaE <- theta[,1]
+betaE  <- theta[,2]
+
+pointe <- log_importance_weights(alpha = alphaE, beta = betaE)
+pointe_normalized <- normalized_importance_weights(alpha = alphaE, beta = betaE)
+
+hist(pointe)
+hist(pointe_normalized)
+```
+
+### F)
+
+Below I show the sampling effective sample size.
+
+```{r}
+S_eff <- function(alpha, beta) {
+  Seff <- 1/sum(normalized_importance_weights(alpha, beta)^2)
+  return(Seff)
+}
+
+Seff <- S_eff(alpha, beta)
+print(Seff)
+```
+
+### G)
+
+To analyze the possibility of missing some extremely large importance weights, we can look at the sampling effective sample size. If small, it indicates that there are only a handful of extremely high weights. If big, then it shows that it has many extremely high weights.
+
+### H)
+
+```{r}
+posterior_mean <- function(alpha, beta) {
+  
+  theta <- list(alpha, beta)
+  lst <- list()
+  i <- 0
+  for(t in theta) {
+    i <- 1 + i
+    
+    S <- length(t)
+    estimate <- (1/S)*sum(t)
+    variance <- var(t)
+    mcse <- sqrt(variance/Seff)
+    nu.leadingZeros <- attr(regexpr("(?<=\\.)0+", mcse, perl = TRUE), "match.length")
+    estimate <- round(estimate, nu.leadingZeros)
+    
+    lst[i] <- estimate
+    i <- 1 + i 
+    lst[i] <- mcse[1]
+  }
+  return(lst)
+}
+
+pstmean <- posterior_mean(alpha, beta)
+print(pstmean)
+```
 
 
 
