@@ -83,13 +83,10 @@ density_ratio(alpha_propose  = 0.374,
 My metropolis algorithm function is described below:
 
 ```{r}
-theta0  <- c(0.00, 0.25,
-             0.50, 0.75,
-             0.00, 0.25,
-             0.50, 0.75)
 theta0 <- rnorm(8, mean = 72, sd = 72)
 theta0 <- matrix(theta0, nrow = 4, ncol = 2)
-maxIter <- 30000
+#theta0 <- rmvnorm(8, mean = mean, sigma = sigma)
+maxIter <- 1000
 theta_df <- data.frame()
 for(c in 1:4) {
   alpha0 <- theta0[c,1] 
@@ -100,8 +97,8 @@ for(c in 1:4) {
       beta_previous  <- beta0
     }
     
-    alpha_propose <- rnorm(1, mean = alpha_previous, sd = 10)
-    beta_propose  <- rnorm(1, mean = beta_previous,  sd = 50)
+    alpha_propose <- rnorm(1, mean = alpha_previous, sd = 1)
+    beta_propose  <- rnorm(1, mean = beta_previous,  sd = 5)
     
     r <- density_ratio(alpha_propose  = alpha_propose,
                        alpha_previous = alpha_previous,
@@ -110,8 +107,16 @@ for(c in 1:4) {
                        x = bioassay$x,
                        y = bioassay$y,
                        n = bioassay$n)
-    if(r > 1) {alpha_previous <- alpha_propose}
-    if(r > 1) {beta_previous  <- beta_propose}
+    if(r > 1) {
+      alpha_previous <- alpha_propose
+      beta_previous  <- beta_propose
+    }else{
+        u <- runif(1, min = 0, max = 1)
+        if(u <= r) {
+          alpha_previous <- alpha_propose
+          beta_previous  <- beta_propose
+        }
+      }
     theta_df <- rbind.data.frame(theta_df, c(c, i, alpha_previous, beta_previous, r))
   }
 }
@@ -134,7 +139,7 @@ My jumping rule, proposal distributions, are $theta^* \sim N(theta^{t-1}, \Sigma
 
 ### c)
 
-While I have seen in practice that people use random numbers for their initial values, such practice caused me problems in my applications of truncated log-likelihood maximization with gradient descent algorithms. Thus, I use the vector the following matrix:
+While I have seen in practice that people use random numbers for their initial values, such practice caused me problems in my applications of truncated log-likelihood maximization with gradient descent algorithms. For this case, I actually employ the random matrix below:
 
 ```{r}
 theta0
@@ -142,7 +147,7 @@ theta0
 
 ### d)
 
-Since my Metropolis algorithm does not seem to be very laborious, I used four Markov chains with 10000 of length.
+Since my Metropolis algorithm does not seem to be very laborious, I used four Markov chains with 1000 of length.
 
 ### e)
 
@@ -158,6 +163,7 @@ Below I assess simultanously the convergence of $\alpha$ and $\beta$
 
 ```{r}
 warmuprate <- .5
+library(ggplot2)
 
 ggplot() +
   geom_path(chain1, 
@@ -236,7 +242,7 @@ Rhat(beta_sims)
 Below is my scatter plot of the points that exclude the warm-up.
 
 ```{r}
-warmuprate <- .2
+warmuprate <- .5
 
 ggplot() +
   geom_point(chain1[chain1$t > length(chain1$t)*warmuprate,], 
