@@ -1,0 +1,71 @@
+---
+title: "BDA - Assignment 6"
+author: "Anonymous"
+output: 
+  pdf_document: 
+    toc: yes
+    toc_depth: 1
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+# This chunk sets echo = TRUE as default, that is print all code.
+# knitr::opts_chunk$set can be used to set other notebook generation options, too.
+# include=FALSE inside curly brackets makes this block not be included in the pdf.
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# To install aaltobda, see the General information in the assignment.
+remotes::install_github("avehtari/BDA_course_Aalto", subdir = "rpackage", upgrade = "never")
+library(aaltobda)
+data("bioassay")
+```
+
+# Generalized linar model: Bioassay with sTAN
+
+## 1 Below is my Stan code as long as the chain iterations
+
+```{r}
+library(rstan)
+
+data <- list(I = length(bioassay$n),
+             x = bioassay$x,
+             n = 5,
+             y = bioassay$y)
+
+fit <- stan(file = 'bioassay.stan', data = data, verbose = TRUE)
+cat("\n")
+cat("\n")
+writeLines(readLines("bioassay.stan"))
+
+```
+
+### 2. Below is my R-hat diagnostics as well as my explanaiton
+
+$\hat{R}$ is a measured of convergence across the different chains (e.g., separate simulation experiments characterized by different starting points). It is a ratio of weighted total variance, variance between the chains and variance within the chains, and simply the variance between the chains. As the variance between the chains becomes smaller, $\hat{R}$ approaches zero, because the numerator and denominator are becoming the same. Large variance between the chains indicates that simulation experiments have not approached a common density, so whenever $\hat{R}$ is large, it indicates that we should tweak something in the model like the number of simulations per experiment. Although several reasons can explain the lack of convergence, simple examples can be fixed by just increasing the number of simulations.
+
+```{r}
+print(fit) # Fit diagnostics
+```
+
+### 3) Below I show the scatterplot between the estimate coefficient distributions
+
+As my previous measure indicates, $\theta[1] = \alpha = 1.0$ since $MCSE = 0.03$, uninformative values after the second decimal point, and $\theta[2] = \beta = 10.0$ since $MCSE = 0.16$, uninformative values after the first decimal point. These are similar to the values reported in BDA3 - Section 3.7 at $0.8$ and $7.7$, respectively.
+
+```{r}
+pairs(fit, pars = c("theta"))
+```
+
+### 4) Course feedback:
+
+- I used mostly Windows (work computer), but since my work computer does not knit pdfs for some reason, I complemented my work with my mac.
+- R
+- RStan
+- I had so many installations problems with rstan, but mostly they came because of not knowing how to handle the makevars files, and that my computer had some admin permission limitation.
+- I am experienced in several programming languages other than R, but I stick to R because it has really cool documentation. Rstan, in my opinion, falls short. I wish there were more documentation of functions to know for instance what are the inputs and the outputs as well as the classes of the inputs and outputs and their dimensions.
+
+
+
+
+
