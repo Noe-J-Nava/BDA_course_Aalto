@@ -1,0 +1,248 @@
+---
+title: "BDA - Assignment 7"
+author: "Anonymous"
+output: 
+  pdf_document: 
+    toc: yes
+    toc_depth: 1
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+# This chunk sets echo = TRUE as default, that is print all code.
+# knitr::opts_chunk$set can be used to set other notebook generation options, too.
+# include=FALSE inside curly brackets makes this block not be included in the pdf.
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# To install aaltobda, see the General information in the assignment.
+remotes::install_github("avehtari/BDA_course_Aalto", subdir = "rpackage", upgrade = "never")
+library(aaltobda)
+library(rstan)
+```
+
+## 1 Linear model: Drowing data with Stan
+
+```{r}
+data("drowning")
+```
+
+### a) Find the three mistakes
+
+Below I marked the three errors within the Stan script.
+
+```{r}
+writeLines(readLines("listing1.stan"))
+```
+
+### b)
+
+I chose $\beta \sim N(0, \sigma_{beta} = 25)$ since I show below that $Pr(-69 < \beta < 69)$ is alittle above .99.
+
+```{r}
+integrate(function(beta) {dnorm (beta, 0, 25)}, -69, 69)
+```
+
+### c)
+
+Below I show how I added the priors, before the likelihood function. Notice that in my Stan script, I already have the priors added.
+
+`
+// Priors
+beta ~ normal(0, 25);
+alpha ~ normal(1980+143, 28)
+`
+
+### d)
+
+Because I have no information about the constant (e.g., what the value of drownings was when Jesus was borned), then I rather just keep it as uniform.
+
+
+### Extra:
+
+I show if I obtain similar figures to those in the assignment.
+
+```{r}
+# Creating the data
+data <- list(N = length(drowning$year),
+             x = drowning$year,
+             y = drowning$drownings,
+             xpred = 2020)
+fit <- stan(file = 'listing1.stan', data = data, verbose = FALSE)
+extracted <- extract(fit)
+```
+
+Below I show the histogram for beta:
+
+```{r}
+hist(extracted$beta, breaks = 100)
+```
+
+Below I show the histogram for the value in 2020:
+
+```{r}
+hist(extracted$ypred, breaks = 100)
+```
+
+## 2 Hierarchical model: factory data with Stan
+
+```{r}
+data("factory")
+ypool <- matrix(as.matrix(factory), ncol = 1)
+ypool <- as.vector(ypool) # previous dimensions were 30x1, but Stan expects 30 ... do not know the difference but meh! computers.
+stan_data <- list(
+  y = factory,        # Data in 5x6 dimension
+  N = nrow(factory),  # Number of observations per machine
+  J = ncol(factory),  # Number of machines
+  ypool = ypool
+)
+test <- stan(file = 'test.stan', data = stan_data)
+print(test)
+testExtracted <- extract(test)
+```
+
+### a) Description of models:
+
+- Separate model
+
+Our machine observations are assumed to come from
+
+$y_{ij} \sim N(\mu_j,\sigma_j)$
+
+where the prior distribution of the parameters are
+
+$\mu_j \sim N(0,1)$
+
+$\sigma_j \sim N(0,1)$
+
+Notice here that what is happening is that the modelling discerns between observations as they come from different machines.
+
+- Pooled model
+
+Our machine observations are assumed to come from a common *pooled* distribution as defined by
+
+$y_{i} \sim N(\mu, \sigma)$
+
+where in addition, the prior distribution of the parameters are
+
+$\mu \sim N(0,1)$
+
+$\sigma \sim N(0,1)$
+
+Notice here that what is happening is that the modelling does not discern between observations as they come from different machines; they are pooled together.
+
+- Hierarchical model
+
+Our machine observations are assumed to come from
+
+$y_{ij} \sim N(\mu_j,\sigma)$
+
+where in addition, the prior distribution of the parameters are
+
+$\mu_j \sim N(0,\tau)$
+
+where $\tau~N(0,1)$ is our *hyper-parameters*. The distribution of the shape parameter is drawn as:
+
+$\sigma \sim N(0,1)$
+
+Notice that here, we are restricting our parameters of location $mu_j$ to be drawn from a common distribution whose parameter of location is, in turn, drawn from another normal distribution, a weekly *hyper-prior*: $\tau \sim N(0,10)$
+
+### b) Stan scripts for each model
+
+- Pooled model:
+
+```{r}
+pooled <- stan(file = 'pooled.stan', data = stan_data, verbose = FALSE)
+#print(pooled)
+pooledExtracted <- extract(pooled)
+writeLines(readLines("pooled.stan"))
+```
+
+- separate model:
+
+```{r}
+separate <- stan(file = 'separate.stan', data = stan_data, verbose = FALSE)
+#print(separate)
+separateExtracted <- extract(separate)
+writeLines(readLines("separate.stan"))
+```
+
+- Hierarchical model
+
+```{r}
+hierarchical <- stan(file = 'hierarchical.stan', data = stan_data, verbose = FALSE)
+#print(hierarchical)
+hierarchicalExtracted <- extract(hierarchical)
+writeLines(readLines("hierarchical.stan"))
+```
+
+### c)
+
+- **the posterior distribution of the mean of the quality measurements of the sixth machine**
+
+  - separate:
+  
+
+
+- the predictive distribution for another quality measurements of the sixth machine
+
+- the posterior distrubtion of the mean of the quality of the seventh machine.
+
+
+### d)
+
+First, we create the function to report the mean with the 90% true intervals:
+
+```{r}
+estIntervals <- function(sims) {
+  
+  est <- mean(sims)
+  low <- quantile(sims, .05)
+  upp <- quantile(sims, .95)
+  
+  value <- list(
+    est = est,
+    low = low,
+    upp = upp
+  )
+  
+  return(value)
+}
+```
+
+
+- Pooled model:
+
+```{r}
+pooledv2 <- stan(file = 'pooledv2.stan', data = stan_data, verbose = FALSE)
+print(pooledv2)
+pooledv2Extracted <- extract(pooledv2)
+
+estIntervals(pooledv2Extracted$mu)
+```
+
+- separate model:
+
+```{r}
+separatev2 <- stan(file = 'separatev2.stan', data = stan_data, verbose = FALSE)
+print(separatev2)
+separatev2Extracted <- extract(separatev2)
+
+estIntervals(separatev2Extracted$mu[1])
+```
+
+- Hierarchical model
+
+```{r}
+hierarchicalv2 <- stan(file = 'hierarchicalv2.stan', data = stan_data, verbose = FALSE)
+print(hierarchical)
+hierarchicalv2Extracted <- extract(hierarchicalv2)
+
+estIntervals(hierarchicalv2Extracted$mu[1])
+```
+
+
+
+
+
