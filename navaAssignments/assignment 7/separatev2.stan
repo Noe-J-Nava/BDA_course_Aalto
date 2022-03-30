@@ -1,7 +1,7 @@
 data {
-    int<lower=0> N; // Numnber of observations per machine
-    int<lower=0> J; // Number of machines
-    vector[J] y[N]; // This seems to create a matrix
+    int<lower=0> N;    // Numnber of observations per machine
+    int<lower=0> J;    // Number of machines
+    vector[J] y[N];    // This seems to create a matrix
     vector[J*N] ypool; // pooled ys
 }
 
@@ -21,4 +21,10 @@ model {
     for(j in 1:J) {
         y[,j] ~ normal(mu[j], sigma[j]);
     }
+}
+
+generated quantities {
+   real ypred;
+// for the first machine
+   ypred = normal_rng(mu[1], sigma[1]);
 }

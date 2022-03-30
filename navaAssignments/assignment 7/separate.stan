@@ -25,10 +25,6 @@ model {
 
 generated quantities {
    real ypred6;
-   real ypred5;
-// Compute predictive distribution
 // for the sixth machine
    ypred6 = normal_rng(mu[6], sigma[6]);
-// for the fifth machine
-   ypred5 = normal_rng(mu[5], sigma[5]);
 }

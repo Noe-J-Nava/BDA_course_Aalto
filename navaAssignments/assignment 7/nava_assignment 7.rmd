@@ -97,10 +97,19 @@ stan_data <- list(
   J = ncol(factory),  # Number of machines
   ypool = ypool
 )
+```
+
+### Why strange results?
+
+Notice that the strange results come from the fact that we are predicting negative factory measurements. This seem to happen when we use weakly informative priors.
+
+```{r}
 test <- stan(file = 'test.stan', data = stan_data)
 print(test)
 testExtracted <- extract(test)
+
 ```
+
 
 ### a) Description of models:
 
@@ -154,7 +163,6 @@ Notice that here, we are restricting our parameters of location $mu_j$ to be dra
 
 ```{r}
 pooled <- stan(file = 'pooled.stan', data = stan_data, verbose = FALSE)
-#print(pooled)
 pooledExtracted <- extract(pooled)
 writeLines(readLines("pooled.stan"))
 ```
@@ -163,7 +171,6 @@ writeLines(readLines("pooled.stan"))
 
 ```{r}
 separate <- stan(file = 'separate.stan', data = stan_data, verbose = FALSE)
-#print(separate)
 separateExtracted <- extract(separate)
 writeLines(readLines("separate.stan"))
 ```
@@ -172,27 +179,44 @@ writeLines(readLines("separate.stan"))
 
 ```{r}
 hierarchical <- stan(file = 'hierarchical.stan', data = stan_data, verbose = FALSE)
-#print(hierarchical)
 hierarchicalExtracted <- extract(hierarchical)
 writeLines(readLines("hierarchical.stan"))
 ```
 
 ### c)
 
-- **the posterior distribution of the mean of the quality measurements of the sixth machine**
+**the posterior distribution of the mean of the quality measurements of the sixth machine --- and --- the predictive distribution for another quality measurement of the sixth machine --- and --- the posterior distribution of the mean of the quality measurements of the seventh machine**
 
-  - separate:
+- Pooled: Below I show both statistics on the location and dispersion parameter of the pooled model, which represents the sixth and seventh machines (since they are all pooled together). I also show histograms.
   
+```{r}
+print(pooled)
+hist(pooledExtracted$mu, breaks = 100)
+hist(pooledExtracted$ypred6, breaks = 100)
+```
+  
+- Separate: Below I show both statistics on the location and dispersion parameter of the separate model. Because I could not simply draw another mu, I am unable to say something about the seventh machine. I show histograms for $mu_6$ and notice that since this is not a distribution, then I only have one value. The predictive value for the sixth machine is also shown with negative values.
+  
+```{r}
+print(separate)
+hist(separateExtracted$mu[6], breaks = 100)
+hist(separateExtracted$ypred6, breaks = 100)
+```
 
+- Hierarchical: Below I show both statistics on the location and dispersion parameter of the hierarchical model. Because I could simply draw another mu, I am able to say something about the seventh machine. I show histograms for $mu_6$ and notice that since this is not a distribution, then I only have one value. The predictive value for the sixth and seventh machine is also shown with negative values.
+  
+```{r}
+print(hierarchical)
+hist(hierarchicalExtracted$mu[6], breaks = 100)
+hist(hierarchicalExtracted$ypred6, breaks = 100)
+hist(hierarchicalExtracted$ypred7, breaks = 100)
+```
 
-- the predictive distribution for another quality measurements of the sixth machine
-
-- the posterior distrubtion of the mean of the quality of the seventh machine.
 
 
 ### d)
 
-First, we create the function to report the mean with the 90% true intervals:
+First, we create the function to report the mean with the 90% true intervals, but also notice that we do not have negative predictions, implying that prios matter a lot!:
 
 ```{r}
 estIntervals <- function(sims) {
@@ -236,7 +260,7 @@ estIntervals(separatev2Extracted$mu[1])
 
 ```{r}
 hierarchicalv2 <- stan(file = 'hierarchicalv2.stan', data = stan_data, verbose = FALSE)
-print(hierarchical)
+print(hierarchicalv2)
 hierarchicalv2Extracted <- extract(hierarchicalv2)
 
 estIntervals(hierarchicalv2Extracted$mu[1])

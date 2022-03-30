@@ -6,9 +6,10 @@ data {
 }
 
 parameters {
-    vector[J] mu;              
+    vector[J+1] mu;      // Notice dimensions J+1 in order to get info on the seventh mu and get preds on the seventh machine             
     real<lower=0> sigma; 
-    real tau; // Hyper-parameter
+// Hyper-parameter
+    real<lower=0> tau;
 }
 
 model {
@@ -16,7 +17,7 @@ model {
     tau ~ normal(0,1);
 
 // Priors
-    for(j in 1:J) {
+    for(j in 1:(J+1)) {
         mu[j] ~ normal(0,tau);
     }
     sigma ~ normal(0,10);
@@ -29,11 +30,9 @@ model {
 
 generated quantities {
    real ypred6;
-   real ypred5;
-   // Compute predictive distribution
-   // for the sixth machine
+   real ypred7;
+// for the sixth machine
    ypred6 = normal_rng(mu[6], sigma);
-   // Compute predictive distribution
-   // for the fifth machine
-   ypred5 = normal_rng(mu[5], sigma);
+// for the seventh machine
+    ypred7 = normal_rng(mu[7], sigma);
 }

@@ -20,7 +20,7 @@ model {
 
 // Priors
     for(j in 1:J) {
-        mu[j] ~ normal(tauMu, tauMu);
+        mu[j] ~ normal(tauMu, tauSigma);
     }
     sigma ~ normal(0,10);
 
@@ -28,4 +28,11 @@ model {
     for(j in 1:J) {
         y[,j] ~ normal(mu[j], sigma);
     }
+}
+
+generated quantities {
+   real ypred;
+   // Compute predictive distribution
+   // for the first machine
+   ypred = normal_rng(mu[1], sigma);
 }

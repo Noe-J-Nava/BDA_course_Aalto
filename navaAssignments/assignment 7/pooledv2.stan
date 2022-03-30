@@ -18,3 +18,9 @@ model {
     // Likelihood
     ypool ~ normal(mu, sigma);
 }
+
+generated quantities {
+   real ypred;
+// for the first machine
+   ypred = normal_rng(mu, sigma);
+}
